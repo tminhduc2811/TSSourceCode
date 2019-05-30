@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "C:/Users/DELL-PC/Desktop/Main_Desktop/automation_project/UnmannedVehicle/Control",
+                "C:/Users/DELL-PC/Desktop/Main_Desktop/automation_project/UnmannedVehicle/Control/Libraries/STM32F4xx_StdPeriph_Driver/inc",
+                "C:/Users/DELL-PC/Desktop/Main_Desktop/automation_project/Embeded_Project/MyStm_Lib/inc",
+                "C:/Users/DELL-PC/Desktop/Main_Desktop/automation_project/UnmannedVehicle/Control/Libraries/CMSIS/Device/ST/STM32F4xx/Include",
+                "C:/Users/DELL-PC/Desktop/Main_Desktop/automation_project/UnmannedVehicle/Control/Libraries/CMSIS/Include",
+                "C:/MinGW/lib/gcc/mingw32/6.3.0/include/c++",
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "8.1",
+            "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/bin/cl.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "msvc-x64"
+        }
+    ],
+    "version": 4
+}
