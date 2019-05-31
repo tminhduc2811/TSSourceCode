@@ -530,29 +530,61 @@ void DMA2_Stream2_IRQHandler(void)
 				
 				/*---------------- Receive path coordinate -----------------*/
 				case Path_Plan: 
-					if(StringHeaderCompare(&U6.Message[1][0],"START"))
-					{
-						GPS_NEO.NbOfWayPoints = 0;
-						GPS_NEO.NbOfP = 0;
-						Status_UpdateStatus(&VehStt.Veh_Auto_Flag,Check_NOK);
-						Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_NOK);
-						GPS_ClearPathBuffer(&GPS_NEO);
-						GPS_ClearPathCorBuffer(&GPS_NEO);
-						Status_UpdateStatus(&VehStt.GPS_Start_Receive_PathCor,Check_OK);
-					}
-					else if(StringHeaderCompare(&U6.Message[1][0],"STOP"))
-					{
-						Status_UpdateStatus(&VehStt.GPS_Start_Receive_PathCor,Check_NOK);
-						U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,1"));
-						GPS_PathPlanning(&GPS_NEO,GPS_NEO.Step);
-						GPS_UpdatePathYaw(&GPS_NEO);
-						while(!DMA_GetFlagStatus(DMA2_Stream6,DMA_FLAG_TCIF6)){};
-						U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,VPLAN,1"));
-					}
-					else if(Status_CheckStatus(&VehStt.GPS_Start_Receive_PathCor))
-					{
-						GPS_UpdatePathCoordinate(&GPS_NEO,U6_RxBuffer);
-					}
+//					if(StringHeaderCompare(&U6.Message[1][0],"START"))
+//					{
+//						GPS_NEO.NbOfWayPoints = 0;
+//						GPS_NEO.NbOfP = 0;
+//						Status_UpdateStatus(&VehStt.Veh_Auto_Flag,Check_NOK);
+//						Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_NOK);
+//						GPS_ClearPathBuffer(&GPS_NEO);
+//						GPS_ClearPathCorBuffer(&GPS_NEO);
+//						Status_UpdateStatus(&VehStt.GPS_Start_Receive_PathCor,Check_OK);
+//					}
+//					else if(StringHeaderCompare(&U6.Message[1][0],"STOP"))
+//					{
+//						Status_UpdateStatus(&VehStt.GPS_Start_Receive_PathCor,Check_NOK);
+//						U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,1"));
+//						GPS_PathPlanning(&GPS_NEO,GPS_NEO.Step);
+//						GPS_UpdatePathYaw(&GPS_NEO);
+//						while(!DMA_GetFlagStatus(DMA2_Stream6,DMA_FLAG_TCIF6)){};
+//						U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,VPLAN,1"));
+//					}
+//					else if(Status_CheckStatus(&VehStt.GPS_Start_Receive_PathCor))
+//					{
+//						GPS_UpdatePathCoordinate(&GPS_NEO,U6_RxBuffer);
+//					}
+//					break;
+						if(StringHeaderCompare(&U6.Message[1][0],"SPLINE"))
+						{
+							GPS_NEO.NbOfWayPoints = (int)GetValueFromString(&U6.Message[2][0]);
+							GPS_NEO.Cor_Index = 0;
+							GPS_NEO.NbOfP = 0;
+							Status_UpdateStatus(&VehStt.Veh_Auto_Flag,Check_NOK);
+							Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_NOK);
+							GPS_ClearPathBuffer(&GPS_NEO);
+							GPS_ClearPathCorBuffer(&GPS_NEO);
+							Status_UpdateStatus(&VehStt.GPS_Start_Receive_PathCor,Check_OK);
+							U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,1"));
+						}
+						else if(Status_CheckStatus(&VehStt.GPS_Start_Receive_PathCor))
+						{
+							if(GPS_NEO.NbOfWayPoints != 0)
+							{
+								GPS_UpdatePathCoordinateV2(&GPS_NEO,U6_RxBuffer);
+								if(GPS_NEO.NbOfP == (GPS_NEO.NbOfWayPoints - 1))
+								{
+									Status_UpdateStatus(&VehStt.GPS_Start_Receive_PathCor,Check_NOK);
+									GPS_UpdatePathYaw(&GPS_NEO);
+									U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,VPLAN,1"));
+								}
+							}
+							else
+							{
+								U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,0"));
+							}
+						}
+						else
+							U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,0"));
 					break;
 					
 				/*--------------- Save data in internal flash memory --------*/

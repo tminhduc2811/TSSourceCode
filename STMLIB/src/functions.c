@@ -794,6 +794,7 @@ void GPS_ParametersInit(GPS *pgps)
 	pgps->NbOfP = 0;
 	pgps->Step = 0.5;
 	pgps->dmin = 0;
+	pgps->Cor_Index = 0;
 }
 
 /** @brief  : GPS updates path yaw 
@@ -828,6 +829,13 @@ void	GPS_UpdatePathCoordinate(GPS *pgps, uint8_t *inputmessage)
 	pgps->Longitude = 0;
 }
 
+void	GPS_UpdatePathCoordinateV2(GPS *pgps, uint8_t *inputmessage)
+{
+	GetMessageInfo((char*)inputmessage,pgps->TempBuffer,',');
+	pgps->NbOfP = (int)GetValueFromString(&pgps->TempBuffer[1][0]);
+	pgps->P_X[pgps->NbOfP] = GetValueFromString(&pgps->TempBuffer[2][0]);
+	pgps->P_Y[pgps->NbOfP] = GetValueFromString(&pgps->TempBuffer[3][0]);
+}
 /** @brief  : GPS update K and Step
 **  @agr    : GPS, K and Step
 **  @retval : none
@@ -972,10 +980,10 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 	double efa, goal_radius, VM1, VM2, AngleRadian;
 	pgps->Angle = &Mag;
 	AngleRadian = pgps->Angle->Angle * (double)pi/180;
-	if(AngleRadian > 0)
+	/*if(45*pi/180 <AngleRadian > 135*pi/180)
 		AngleRadian -= 20*pi/180;
-	else
-		AngleRadian += 20*pi/180;
+	else if(-135*pi/180 <AngleRadian < -45*pi/180)
+		AngleRadian += 20*pi/180;*/
 	AngleRadian = pi/2 - AngleRadian;
 	/*if(AngleRadian > 0)
 		AngleRadian += 33*pi/180;
@@ -1010,7 +1018,7 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 	pgps->dmin = dmin;
 	pgps->P_Yaw_Index = index;
 	efa = - ((pgps->CorX - pgps->P_X[index]) * (cos(AngleRadian + pi/2)) + (pgps->CorY - pgps->P_Y[index]) * sin(AngleRadian + pi/2));
-	goal_radius = sqrt(pow(pgps->CorX - pgps->Path_X[pgps->NbOfWayPoints - 1],2) + pow(pgps->CorY - pgps->Path_Y[pgps->NbOfWayPoints - 1],2));
+	goal_radius = sqrt(pow(pgps->CorX - pgps->P_X[pgps->NbOfWayPoints - 1],2) + pow(pgps->CorY - pgps->P_Y[pgps->NbOfWayPoints - 1],2));
 	if(goal_radius <= 1)
 		Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_OK);
 	pgps->Thetae = Pi_To_Pi(AngleRadian - pgps->P_Yaw[index]);

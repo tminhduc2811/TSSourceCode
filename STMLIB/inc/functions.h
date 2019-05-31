@@ -174,6 +174,7 @@ typedef struct GPS{
 	int 			NbOfWayPoints;
 	int				GPS_Quality;
 	int				NbOfP;
+	int 			Cor_Index;
 	/* Buffer read and write data */
 	char			TempBuffer[50][30];
 	double    Path_X[20];
@@ -305,6 +306,7 @@ void						GPS_ClearPathBuffer(GPS *pgps);
 void 						GPS_ClearPathCorBuffer(GPS *pgps);
 void						GPS_UpdatePathYaw(GPS *pgps);
 void						GPS_UpdatePathCoordinate(GPS *pgps, uint8_t *inputmessage);
+void						GPS_UpdatePathCoordinateV2(GPS *pgps, uint8_t *inputmessage);
 void						GPS_SavePathCoordinateToFlash(GPS *pgps, FlashMemory *pflash);
 void						GPS_UpdateParameters(GPS *pgps, double K, double Step);
 void						GPS_UpdateCoordinateXY(GPS *pgps, double Cor_X, double Cor_Y);
