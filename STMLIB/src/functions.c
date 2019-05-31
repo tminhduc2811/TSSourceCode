@@ -967,15 +967,15 @@ void	GPS_PathPlanning(GPS *pgps, float Step)
 **/
 void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double M2Velocity)
 {                   /*   Current pose of the robot   / /  Path coordinate  / /  ThetaP  */
-	double dmin = 0,dx,dy,d, tyaw;
+	double dmin = 0,dx,dy,d;
 	int 	 index = 0;
 	double efa, goal_radius, VM1, VM2, AngleRadian;
 	pgps->Angle = &Mag;
 	AngleRadian = pgps->Angle->Angle * (double)pi/180;
 	if(AngleRadian > 0)
-		AngleRadian -= 17*pi/180;
+		AngleRadian -= 20*pi/180;
 	else
-		AngleRadian += 17*pi/180;
+		AngleRadian += 20*pi/180;
 	AngleRadian = pi/2 - AngleRadian;
 	/*if(AngleRadian > 0)
 		AngleRadian += 33*pi/180;
@@ -983,8 +983,8 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 		AngleRadian -= 33*pi/180;*/
 	/* V = sqrt(vx^2 + vy^2) */
 	
-	VM1 = Wheel_Radius * M1Velocity/60;	
-	VM2 = Wheel_Radius * M2Velocity/60;
+	VM1 = Wheel_Radius * 2 * pi * M1Velocity/60;	
+	VM2 = Wheel_Radius * 2 * pi * M2Velocity/60;
 	pgps->Robot_Velocity = (VM1 + VM2)/2;
 	//Searching the nearest point
 	//---------------------------
@@ -1014,11 +1014,8 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 	if(goal_radius <= 1)
 		Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_OK);
 	pgps->Thetae = Pi_To_Pi(AngleRadian - pgps->P_Yaw[index]);
-	
 	pgps->Thetad = -atan2(pgps->K * efa, pgps->Robot_Velocity);
 	pgps->Delta_Angle  = (pgps->Thetae + pgps->Thetad)*(double)180/pi;
-	pgps->Pre_CorX = pgps->CorX;
-	pgps->Pre_CorY = pgps->CorY;
 }
 
 /** @brief  : Header compare GPS message
@@ -1620,8 +1617,16 @@ void ReadFromFlash(FlashMemory *pflash, uint32_t FLASH_BaseAddr)
 }
 
 
-
-
+void GPS_UpdateNewCoordinates(GPS *pgps, double SampleTime)
+{
+	double dx, dy;
+	dx = pgps->CorX - pgps->Pre_CorX;
+	dy = pgps->CorY - pgps->Pre_CorY;
+	pgps->Pre_CorX = pgps->CorX;
+	pgps->Pre_CorY = pgps->CorY;
+	pgps->CorX += dx * SampleTime;
+	pgps->CorY += dy * SampleTime;
+}
 
 
 

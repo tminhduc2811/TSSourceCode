@@ -499,8 +499,29 @@ int main(void)
 						}
 						else if((GPS_NEO.GPS_Quality == RTK_Fixed) || (GPS_NEO.GPS_Quality == RTK_Float))
 						{
+							GPS_UpdateNewCoordinates(&GPS_NEO, Timer.T);
 							GPS_StanleyCompute();
 						}
+						
+						// Case 1
+						/*else if((GPS_NEO.GPS_Quality == RTK_Fixed) || (GPS_NEO.GPS_Quality == RTK_Float))
+						{
+							if(Mag.Fuzzy_Out >= 0)
+							{
+								PID_UpdateSetVel(&M1,(1 - fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
+								PID_UpdateSetVel(&M2,(1 + fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
+							}
+							else
+							{
+								PID_UpdateSetVel(&M1,(1 + fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
+								PID_UpdateSetVel(&M2,(1 - fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
+							}
+							if(Status_CheckStatus(&GPS_NEO.Goal_Flag))
+							{
+								PID_UpdateSetVel(&M1,0);
+								PID_UpdateSetVel(&M2,0);
+							}
+						}*/
 						else
 						{
 							PID_UpdateSetVel(&M1,0);
@@ -516,6 +537,8 @@ int main(void)
 					PID_Compute(&M2);
 					Robot_Run(M1.PID_Out,M2.PID_Out);   //Forward down counting Set bit
 					IMU_UpdatePreAngle(&Mag);
+					GPS_NEO.Pre_CorX = GPS_NEO.CorX;
+					GPS_NEO.Pre_CorY = GPS_NEO.CorY;
 					break;
 				
 				/*--------------- Manual mode section --------------- -*/
