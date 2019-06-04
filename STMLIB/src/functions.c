@@ -45,6 +45,7 @@ void	Status_ParametersInit(Status *pstt)
 	pstt->GPS_Start_Receive_PathCor	 = Check_NOK;
 	pstt->GPS_SelfUpdatePosition_Flag = Check_NOK;
 	pstt->GPS_FirstGetPosition    = Check_NOK;
+	pstt->Veh_Object_Avoid_Flag = Check_NOK;
 }
 
 void	Status_UpdateStatus(Check_Status *pstt, Check_Status stt)
@@ -267,6 +268,7 @@ void	Veh_ParametersInit(Vehicle *pveh)
 	pveh->TotalDistance = 0;
 	pveh->Srf05_Selected_Sensor = 1;
 	pveh->Veh_Error = Veh_NoneError;
+	pveh->Sensor_Angle = 0;
 }
 
 void	Veh_UpdateVehicleFromKey(Vehicle *pveh)
@@ -301,6 +303,11 @@ void	Veh_UpdateVehicleFromKey(Vehicle *pveh)
 void	Veh_UpdateMaxVelocity(Vehicle *pveh, double MaxVelocity)
 {
 	pveh->Max_Velocity = MaxVelocity;
+}
+
+void	Veh_GetSensorAngle(Vehicle *pveh, double Angle)
+{
+	pveh->Sensor_Angle = Angle;
 }
 
 Vehicle_Error	Veh_GetCommandMessage(uint8_t *inputmessage, char result[50][30])
@@ -795,6 +802,7 @@ void GPS_ParametersInit(GPS *pgps)
 	pgps->Step = 0.5;
 	pgps->dmin = 0;
 	pgps->Cor_Index = 0;
+	pgps->efa = 0;
 }
 
 /** @brief  : GPS updates path yaw 
@@ -1018,6 +1026,7 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 	pgps->dmin = dmin;
 	pgps->P_Yaw_Index = index;
 	efa = - ((pgps->CorX - pgps->P_X[index]) * (cos(AngleRadian + pi/2)) + (pgps->CorY - pgps->P_Y[index]) * sin(AngleRadian + pi/2));
+	pgps->efa = efa;
 	goal_radius = sqrt(pow(pgps->CorX - pgps->P_X[pgps->NbOfWayPoints - 1],2) + pow(pgps->CorY - pgps->P_Y[pgps->NbOfWayPoints - 1],2));
 	if(goal_radius <= 1)
 		Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_OK);

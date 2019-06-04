@@ -39,6 +39,7 @@ typedef struct Status{
 	Check_Status				GPS_Start_Receive_PathCor;
 	Check_Status				GPS_SelfUpdatePosition_Flag;
 	Check_Status				GPS_FirstGetPosition;
+	Check_Status				Veh_Object_Avoid_Flag;
 }Status;
 
 typedef	enum{
@@ -158,6 +159,7 @@ typedef struct GPS{
 	double 		Pre_CorY;
 	IMU				*Angle;
 	int				P_Yaw_Index;
+	double 		efa;
 	/* Stanley control variables */
 	double		Thetae;
 	double  	Thetad;
@@ -202,6 +204,7 @@ typedef	struct Vehicle
 	/* Srf05 sensor variables */
 	uint8_t						  Srf05_Selected_Sensor;
 	Vehicle_Error				Veh_Error;
+	double							Sensor_Angle;
 }Vehicle;
 
 typedef	struct Message
@@ -274,6 +277,7 @@ void						Veh_GetManualCtrlKey(Vehicle *pveh, char key);
 void						Veh_UpdateVehicleFromKey(Vehicle *pveh);
 void						Veh_CheckStateChange(DCMotor *ipid, uint8_t State);
 void						Veh_UpdateMaxVelocity(Vehicle *pveh, double MaxVelocity);
+void						Veh_GetSensorAngle(Vehicle *pveh, double Angle);
 Vehicle_Error		Veh_GetCommandMessage(uint8_t *inputmessage, char result[50][30]);
 /*------------ PID Function ----------------------*/
 void						PID_UpdateEnc(DCMotor *ipid, uint16_t PulseCount);

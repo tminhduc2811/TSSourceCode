@@ -49,6 +49,7 @@ void 			Parameters_Init(void);
 extern 		Srf05_Data	Mid, Left, Right, Back;
 void 			StartTimer(TIM_TypeDef *TIMx, uint32_t DelayTime);
 void 			StopTimer(TIM_TypeDef *TIMx);
+extern uint8_t SPI4_RxBuffer[9];
 #endif /* __MAIN_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

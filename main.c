@@ -16,99 +16,74 @@
 TIM_TimeBaseInitTypeDef			Main_TIM_Struct;
 NVIC_InitTypeDef						Main_NVIC_Struct;
 Srf05_InitTypeDef						Srf05_Struct;
-Srf05_Data									Mid, Left, Right, Back;
 /* Function */
-void Srf05_MidFront(void)
+#define	 							Declare_Var(type,name)				type SPIDMA_##name
+#define								Declare_PVar(type,name)				type *SPIDMA_##name
+#define								GetVar(name)									SPIDMA_##name
+Declare_Var(SPI_InitTypeDef,SPI_Struct);
+Declare_Var(GPIO_InitTypeDef, GPIO_Struct);
+Declare_Var(DMA_InitTypeDef, DMA_Struct);
+Declare_Var(NVIC_InitTypeDef, NVIC_Struct);
+uint8_t SPI4_RxBuffer[9];
+void SPI4_DMA_Config(void)
 {
-	Srf05_Struct.Srf05_ICTIM					= TIM2;
-	Srf05_Struct.Srf05_GPIO_Trigger		= GPIOD;
-	Srf05_Struct.Srf05_Trigger_Pin		= GPIO_Pin_8;
-	Srf05_Struct.Srf05_GPIO_Echo			= GPIOA;
-	Srf05_Struct.Srf05_Echo_Pin				= GPIO_Pin_15;
-	Srf05_Struct.Srf05_IC_Channel			= TIM_Channel_1;
-	Srf05_Struct.Srf05_TIM_IT_CC			= TIM_IT_CC1;
-	Srf05_Struct.Srf05_PreemptionPriority = 2;
-	Srf05_Struct.Srf05_SubPriority		= 0;
-	Srf05_Initial(&Srf05_Struct);
+	GetSPIxPeriphClock(SPI4,ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE,ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2,ENABLE);
+	
+	/* GPIO config */
+	GetVar(GPIO_Struct).GPIO_Mode = GPIO_Mode_AF;
+	GetVar(GPIO_Struct).GPIO_Pin  = GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14;
+	GetVar(GPIO_Struct).GPIO_OType = GPIO_OType_PP;
+	GetVar(GPIO_Struct).GPIO_PuPd = GPIO_PuPd_UP;
+	GetVar(GPIO_Struct).GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOE,&GetVar(GPIO_Struct));
+	
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource11,GPIO_AF_SPI4);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource12,GPIO_AF_SPI4);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource13,GPIO_AF_SPI4);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource14,GPIO_AF_SPI4);
+	
+	/*SPI config */
+	GetVar(SPI_Struct).SPI_NSS							= SPI_NSS_Soft;
+	GetVar(SPI_Struct).SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256;
+	GetVar(SPI_Struct).SPI_DataSize  				= SPI_DataSize_8b;
+	GetVar(SPI_Struct).SPI_CPHA							= SPI_CPHA_1Edge;
+	GetVar(SPI_Struct).SPI_CPOL     				= SPI_CPOL_Low;
+	GetVar(SPI_Struct).SPI_Direction 				= SPI_Direction_2Lines_FullDuplex;
+	GetVar(SPI_Struct).SPI_FirstBit 				= SPI_FirstBit_MSB;
+	GetVar(SPI_Struct).SPI_Mode    					= SPI_Mode_Slave;
+	SPI_Init(SPI4,&GetVar(SPI_Struct));
+	SPI_Cmd(SPI4,ENABLE);
+	SPI_I2S_DMACmd(SPI4,SPI_I2S_DMAReq_Rx,ENABLE);
+	
+	//-----------Config DMA SPI Rx------------------
+	GetVar(DMA_Struct).DMA_Channel									= DMA_Channel_4;
+	GetVar(DMA_Struct).DMA_BufferSize								= 9;
+	GetVar(DMA_Struct).DMA_Mode 										= DMA_Mode_Normal;
+	GetVar(DMA_Struct).DMA_DIR											= DMA_DIR_PeripheralToMemory;
+	GetVar(DMA_Struct).DMA_Memory0BaseAddr					= (uint32_t)&SPI4_RxBuffer;
+	GetVar(DMA_Struct).DMA_MemoryBurst 							= DMA_MemoryBurst_Single;
+	GetVar(DMA_Struct).DMA_MemoryDataSize						= DMA_MemoryDataSize_Byte;
+	GetVar(DMA_Struct).DMA_MemoryInc								= DMA_MemoryInc_Enable;
+	GetVar(DMA_Struct).DMA_PeripheralBaseAddr 			= (uint32_t)&SPI4->DR;
+	GetVar(DMA_Struct).DMA_PeripheralBurst					=	DMA_PeripheralBurst_Single;
+	GetVar(DMA_Struct).DMA_PeripheralDataSize				= DMA_PeripheralDataSize_Byte;
+	GetVar(DMA_Struct).DMA_PeripheralInc						= DMA_PeripheralInc_Disable;
+	GetVar(DMA_Struct).DMA_FIFOMode									= DMA_FIFOMode_Disable;
+	GetVar(DMA_Struct).DMA_FIFOThreshold						= DMA_FIFOThreshold_HalfFull;
+	GetVar(DMA_Struct).DMA_Priority 								= DMA_Priority_Medium;
+	DMA_Init(DMA2_Stream0,&GetVar(DMA_Struct));
+	DMA_Cmd(DMA2_Stream0,ENABLE);
+	//------------NVIC Config----------
+	GetVar(NVIC_Struct).NVIC_IRQChannel 										= DMA2_Stream0_IRQn;
+	GetVar(NVIC_Struct).NVIC_IRQChannelPreemptionPriority 	= 2;
+	GetVar(NVIC_Struct).NVIC_IRQChannelSubPriority					= 0;
+	GetVar(NVIC_Struct).NVIC_IRQChannelCmd									= ENABLE;
+	NVIC_Init(&GetVar(NVIC_Struct));
+	DMA_ITConfig(DMA2_Stream0,DMA_IT_TC,ENABLE);
 }
 
-void Srf05_StartSensorMid(void)
-{
-	GPIO_ResetBits(GPIOD,GPIO_Pin_8);
-	Core_Delay_Us(10);
-	GPIO_SetBits(GPIOD,GPIO_Pin_8);
-	Core_Delay_Us(50);
-	GPIO_ResetBits(GPIOD,GPIO_Pin_8);
-}
-
-void Srf05_LeftFront(void)
-{
-	Srf05_Struct.Srf05_ICTIM					= TIM2;
-	Srf05_Struct.Srf05_GPIO_Trigger		= GPIOD;
-	Srf05_Struct.Srf05_Trigger_Pin		= GPIO_Pin_9;
-	Srf05_Struct.Srf05_GPIO_Echo			= GPIOB;
-	Srf05_Struct.Srf05_Echo_Pin				= GPIO_Pin_3;
-	Srf05_Struct.Srf05_IC_Channel			= TIM_Channel_2;
-	Srf05_Struct.Srf05_TIM_IT_CC			= TIM_IT_CC2;
-	Srf05_Struct.Srf05_PreemptionPriority = 2;
-	Srf05_Struct.Srf05_SubPriority		= 1;
-	Srf05_Initial(&Srf05_Struct);
-}
-
-void Srf05_StartSensorLeft(void)
-{
-	GPIO_ResetBits(GPIOD,GPIO_Pin_8);
-	Core_Delay_Us(10);
-	GPIO_SetBits(GPIOD,GPIO_Pin_8);
-	Core_Delay_Us(50);
-	GPIO_ResetBits(GPIOD,GPIO_Pin_8);
-}
-
-void Srf05_RightFront(void)
-{
-	Srf05_Struct.Srf05_ICTIM					= TIM2;
-	Srf05_Struct.Srf05_GPIO_Trigger		= GPIOD;
-	Srf05_Struct.Srf05_Trigger_Pin		= GPIO_Pin_10;
-	Srf05_Struct.Srf05_GPIO_Echo			= GPIOB;
-	Srf05_Struct.Srf05_Echo_Pin				= GPIO_Pin_10;
-	Srf05_Struct.Srf05_IC_Channel			= TIM_Channel_3;
-	Srf05_Struct.Srf05_TIM_IT_CC			= TIM_IT_CC3;
-	Srf05_Struct.Srf05_PreemptionPriority = 2;
-	Srf05_Struct.Srf05_SubPriority		= 2;
-	Srf05_Initial(&Srf05_Struct);
-}
-
-void Srf05_StartSensorRight(void)
-{
-	GPIO_ResetBits(GPIOD,GPIO_Pin_10);
-	Core_Delay_Us(10);
-	GPIO_SetBits(GPIOD,GPIO_Pin_10);
-	Core_Delay_Us(50);
-	GPIO_ResetBits(GPIOD,GPIO_Pin_10);
-}
-
-void Srf05_BackEnd(void)
-{
-	Srf05_Struct.Srf05_ICTIM					= TIM2;
-	Srf05_Struct.Srf05_GPIO_Trigger		= GPIOD;
-	Srf05_Struct.Srf05_Trigger_Pin		= GPIO_Pin_11;
-	Srf05_Struct.Srf05_GPIO_Echo			= GPIOB;
-	Srf05_Struct.Srf05_Echo_Pin				= GPIO_Pin_11;
-	Srf05_Struct.Srf05_IC_Channel			= TIM_Channel_4;
-	Srf05_Struct.Srf05_TIM_IT_CC			= TIM_IT_CC4;
-	Srf05_Struct.Srf05_PreemptionPriority = 2;
-	Srf05_Struct.Srf05_SubPriority		= 3;
-	Srf05_Initial(&Srf05_Struct);
-}
-
-void Srf05_StartSensorBack(void)
-{
-	GPIO_ResetBits(GPIOD,GPIO_Pin_11);
-	Core_Delay_Us(10);
-	GPIO_SetBits(GPIOD,GPIO_Pin_11);
-	Core_Delay_Us(50);
-	GPIO_ResetBits(GPIOD,GPIO_Pin_11);
-}
 /** @brief  : TIM1 interrupt count config
 **  @agr    : void
 **  @retval : void
@@ -172,6 +147,7 @@ void Peripheral_Config(void)
 	USART2_Config(9600); 			//GPS USART first priority 
 	USART6_Config(9600); 			//Sending and controling USART1
 	Encoder_Config();				
+	SPI4_DMA_Config();
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
 
@@ -313,6 +289,8 @@ void SendData_0(void)
 	U6_TxBuffer[Veh.SendData_Ind++] = (uint8_t)',';
 	Veh.SendData_Ind   		+= ToChar(Mag.Angle,&U6_TxBuffer[Veh.SendData_Ind],3); // Current angle
 	U6_TxBuffer[Veh.SendData_Ind++] = (uint8_t)',';
+	Veh.SendData_Ind   		+= ToChar(Veh.Sensor_Angle,&U6_TxBuffer[Veh.SendData_Ind],3); // Current angle
+	U6_TxBuffer[Veh.SendData_Ind++] = (uint8_t)',';
 	uint8_t checksum = LRCCalculate(&U6_TxBuffer[1],Veh.SendData_Ind - 1);
 	U6_TxBuffer[Veh.SendData_Ind++] = ToHex((checksum & 0xF0) >> 4);
 	U6_TxBuffer[Veh.SendData_Ind++] = ToHex(checksum & 0x0F);
@@ -377,6 +355,8 @@ void SendData_2(void)
 	U6_TxBuffer[Veh.SendData_Ind++] = (uint8_t)',';
 	Veh.SendData_Ind				+= ToChar(GPS_NEO.dmin,&U6_TxBuffer[Veh.SendData_Ind],3);
 	U6_TxBuffer[Veh.SendData_Ind++] = (uint8_t)',';
+	Veh.SendData_Ind				+= ToChar(GPS_NEO.efa,&U6_TxBuffer[Veh.SendData_Ind],3);
+	U6_TxBuffer[Veh.SendData_Ind++] = (uint8_t)',';
 	uint8_t checksum = LRCCalculate(&U6_TxBuffer[1],Veh.SendData_Ind - 1);
 	U6_TxBuffer[Veh.SendData_Ind++] = ToHex((checksum & 0xF0) >> 4);
 	U6_TxBuffer[Veh.SendData_Ind++] = ToHex(checksum & 0x0F);
@@ -388,6 +368,8 @@ void SendData_2(void)
 void GPS_StanleyCompute(void)
 {
 	GPS_StanleyControl(&GPS_NEO, Timer.T, M1.Current_Vel, M2.Current_Vel);
+	
+	
 	IMU_UpdateSetAngle(&Mag,GPS_NEO.Delta_Angle);
 	IMU_UpdateFuzzyInput(&Mag,&Timer.T);
 	Defuzzification_Max_Min(&Mag);
@@ -407,6 +389,7 @@ void GPS_StanleyCompute(void)
 		PID_UpdateSetVel(&M2,0);
 	}
 }
+
 /** @brief  : Initial parameters for input
 **  @agr    : void
 **  @retval : void
@@ -434,11 +417,6 @@ void Parameters_Init(void)
 	GPS_ParametersInit(&GPS_NEO);
 	/*------------------Vehicleinit--------------*/
 	Veh_ParametersInit(&Veh);
-	/*------------------Srf05 Init --------------*/
-	Srf05_FirstInit(&Mid);
-	Srf05_FirstInit(&Left);
-	Srf05_FirstInit(&Right);
-	Srf05_FirstInit(&Back);
 	/*----------------- Robot two wheel Init-----*/
 	Self_ParametersInit(&selfPosition);
 }
@@ -448,8 +426,8 @@ int main(void)
 	Peripheral_Config();
 	//PID_SaveManual();
 	//GPS_SaveManual();
+
 	SysTick_Config(SystemCoreClock/1000000); // (us)	
-	Srf05_StartSensorMid();
 	while(1)
 	{
 		/*-----------------------------------------------------------------*/
