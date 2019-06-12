@@ -157,6 +157,10 @@ typedef struct GPS{
 	double 		CorY;
 	double 		Pre_CorX;
 	double 		Pre_CorY;
+	double		dx;
+	double		dy;
+	int				NewDataAvailable;
+	int				Times;
 	IMU				*Angle;
 	int				P_Yaw_Index;
 	double 		efa;
@@ -315,7 +319,6 @@ void						GPS_SavePathCoordinateToFlash(GPS *pgps, FlashMemory *pflash);
 void						GPS_UpdateParameters(GPS *pgps, double K, double Step);
 void						GPS_UpdateCoordinateXY(GPS *pgps, double Cor_X, double Cor_Y);
 void						GPS_PathPlanning(GPS *pgps, float Step);
-void						GPS_UpdateNewCoordinates(GPS *pgps, double SampleTime);
 Check_Status		GPS_HeaderCompare(uint8_t *s1, char Header[5]);
 Vehicle_Error		GPS_GetLLQMessage(GPS *pgps, uint8_t *inputmessage,char result[50][30]);
 /*--------Fuzzy control-------------------*/

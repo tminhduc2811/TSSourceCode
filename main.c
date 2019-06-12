@@ -145,7 +145,7 @@ void Peripheral_Config(void)
 	TimerDelayConfig(TIM5);
 	USART1_Config(115200);
 	USART2_Config(9600); 			//GPS USART first priority 
-	USART6_Config(9600); 			//Sending and controling USART1
+	USART6_Config(19200); 			//Sending and controling USART1
 	Encoder_Config();				
 	SPI4_DMA_Config();
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
@@ -365,11 +365,9 @@ void SendData_2(void)
 	U6_SendData(Veh.SendData_Ind);
 }
 
-void GPS_StanleyCompute(void)
+void GPS_StanleyCompute()
 {
 	GPS_StanleyControl(&GPS_NEO, Timer.T, M1.Current_Vel, M2.Current_Vel);
-	
-	
 	IMU_UpdateSetAngle(&Mag,GPS_NEO.Delta_Angle);
 	IMU_UpdateFuzzyInput(&Mag,&Timer.T);
 	Defuzzification_Max_Min(&Mag);
@@ -477,29 +475,9 @@ int main(void)
 						}
 						else if((GPS_NEO.GPS_Quality == RTK_Fixed) || (GPS_NEO.GPS_Quality == RTK_Float))
 						{
-							GPS_UpdateNewCoordinates(&GPS_NEO, Timer.T);
+							GPS_NEO.NewDataAvailable = 0;
 							GPS_StanleyCompute();
 						}
-						
-						// Case 1
-						/*else if((GPS_NEO.GPS_Quality == RTK_Fixed) || (GPS_NEO.GPS_Quality == RTK_Float))
-						{
-							if(Mag.Fuzzy_Out >= 0)
-							{
-								PID_UpdateSetVel(&M1,(1 - fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
-								PID_UpdateSetVel(&M2,(1 + fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
-							}
-							else
-							{
-								PID_UpdateSetVel(&M1,(1 + fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
-								PID_UpdateSetVel(&M2,(1 - fabs(Mag.Fuzzy_Out)) * Veh.Max_Velocity);
-							}
-							if(Status_CheckStatus(&GPS_NEO.Goal_Flag))
-							{
-								PID_UpdateSetVel(&M1,0);
-								PID_UpdateSetVel(&M2,0);
-							}
-						}*/
 						else
 						{
 							PID_UpdateSetVel(&M1,0);

@@ -763,8 +763,29 @@ void GPS_LatLonToUTM(GPS *pgps)
 	{
 		yy = 9999999 + yy;
 	}
-	pgps->CorX = xx;
-	pgps->CorY = yy;
+	// If dx, dy > 3, then it is noise
+	if(pgps->CorX == 0)
+	{
+		pgps->CorX = xx;
+		pgps->CorY = yy;
+		pgps->Pre_CorX = xx;
+		pgps->Pre_CorY = yy;
+		pgps->dx = 0;
+		pgps->dy = 0;
+		pgps->NewDataAvailable = 1;
+		pgps->Times = 0;
+	}
+	else if((fabs(xx - pgps->CorX) < 3.0) || (fabs(yy - pgps->CorY) < 3.0))
+	{
+		pgps->Pre_CorX = pgps->CorX;
+		pgps->Pre_CorY = pgps->CorY;
+		pgps->CorX = xx;
+		pgps->CorY = yy;
+		pgps->dx = pgps->CorX - pgps->Pre_CorX;
+		pgps->dy = pgps->CorY - pgps->Pre_CorY;
+		pgps->NewDataAvailable = 1;
+		pgps->Times = 0;
+	}
 }
 
 /** @brief  : Convert lattitude and longtitude value into Degree
@@ -789,6 +810,10 @@ void GPS_ParametersInit(GPS *pgps)
 {
 	pgps->CorX = 0;
 	pgps->CorY = 0;
+	pgps->dx = 0;
+	pgps->dy = 0;
+	pgps->NewDataAvailable = 0;
+	pgps->Times = 0;
 	pgps->Latitude = 0;
 	pgps->Longitude = 0;
 	pgps->Robot_Velocity = 0;
@@ -983,31 +1008,33 @@ void	GPS_PathPlanning(GPS *pgps, float Step)
 **/
 void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double M2Velocity)
 {                   /*   Current pose of the robot   / /  Path coordinate  / /  ThetaP  */
-	double dmin = 0,dx,dy,d;
+	double dmin = 0,dx,dy,d,posX, posY;
 	int 	 index = 0;
 	double efa, goal_radius, VM1, VM2, AngleRadian;
+	float L = 0.3;
 	pgps->Angle = &Mag;
 	AngleRadian = pgps->Angle->Angle * (double)pi/180;
-	/*if(45*pi/180 <AngleRadian > 135*pi/180)
-		AngleRadian -= 20*pi/180;
-	else if(-135*pi/180 <AngleRadian < -45*pi/180)
-		AngleRadian += 20*pi/180;*/
 	AngleRadian = pi/2 - AngleRadian;
-	/*if(AngleRadian > 0)
-		AngleRadian += 33*pi/180;
-	else
-		AngleRadian -= 33*pi/180;*/
-	/* V = sqrt(vx^2 + vy^2) */
-	
 	VM1 = Wheel_Radius * 2 * pi * M1Velocity/60;	
 	VM2 = Wheel_Radius * 2 * pi * M2Velocity/60;
 	pgps->Robot_Velocity = (VM1 + VM2)/2;
+	
+	// Calculate new Pos if there is no new data from GPS
+	posX = pgps->CorX;
+	posY = pgps->CorY;
+	if(!pgps->NewDataAvailable)
+	{
+		pgps->Times++;
+		posX = pgps->CorX + pgps->dx * pgps->Times * Timer.T;
+		posY = pgps->CorY + pgps->dy * pgps->Times * Timer.T;
+	}
+	
 	//Searching the nearest point
 	//---------------------------
 	for(int i = 0; i < pgps->NbOfP; i++)
 	{
-		dx = pgps->CorX - pgps->P_X[i];
-		dy = pgps->CorY - pgps->P_Y[i];
+		dx = posX - pgps->P_X[i];
+		dy = posY - pgps->P_Y[i];
 		d  = sqrt(pow(dx,2) + pow(dy,2));
 		if(i == 0)
 		{
@@ -1024,14 +1051,18 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 		}
 	}
 	pgps->dmin = dmin;
+//	if(dmin>0.1)
+//		Ktemp = pgps->K;
+//	else
+//		Ktemp = 0.2;
 	pgps->P_Yaw_Index = index;
-	efa = - ((pgps->CorX - pgps->P_X[index]) * (cos(AngleRadian + pi/2)) + (pgps->CorY - pgps->P_Y[index]) * sin(AngleRadian + pi/2));
+	efa = - ((posX - pgps->P_X[index]) * (cos(AngleRadian + pi/2)) + (posY - pgps->P_Y[index]) * sin(AngleRadian + pi/2));
 	pgps->efa = efa;
-	goal_radius = sqrt(pow(pgps->CorX - pgps->P_X[pgps->NbOfWayPoints - 1],2) + pow(pgps->CorY - pgps->P_Y[pgps->NbOfWayPoints - 1],2));
+	goal_radius = sqrt(pow(posX - pgps->P_X[pgps->NbOfWayPoints - 1],2) + pow(posY - pgps->P_Y[pgps->NbOfWayPoints - 1],2));
 	if(goal_radius <= 1)
 		Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_OK);
 	pgps->Thetae = Pi_To_Pi(AngleRadian - pgps->P_Yaw[index]);
-	pgps->Thetad = -atan2(pgps->K * efa, pgps->Robot_Velocity);
+	pgps->Thetad = -atan2(pgps->K* efa, pgps->Robot_Velocity);
 	pgps->Delta_Angle  = (pgps->Thetae + pgps->Thetad)*(double)180/pi;
 }
 
@@ -1269,13 +1300,13 @@ void	Fuzzy_ParametersInit(void)
 		// PO : 0.3 - 1
 		Trapf_Update(&In2_PO,0.3,0.4,1,2);
 		/* Output value */
-		NB = -0.9;
-		NM = -0.75;
-		NS = -0.5;
+		NB = -0.95;
+		NM = -0.8;
+		NS = -0.4;
 		ZE = 0;
-		PS = 0.5;
-		PM = 0.75;
-		PB = 0.9;
+		PS = 0.4;
+		PM = 0.8;
+		PB = 0.95;
 }
 
 void	SelectFuzzyOutput(double vel)
@@ -1631,18 +1662,6 @@ void ReadFromFlash(FlashMemory *pflash, uint32_t FLASH_BaseAddr)
 		mask = 0xFF000000;
 		FLASH_BaseAddr += 4;
 	}
-}
-
-
-void GPS_UpdateNewCoordinates(GPS *pgps, double SampleTime)
-{
-	double dx, dy;
-	dx = pgps->CorX - pgps->Pre_CorX;
-	dy = pgps->CorY - pgps->Pre_CorY;
-	pgps->Pre_CorX = pgps->CorX;
-	pgps->Pre_CorY = pgps->CorY;
-	pgps->CorX += dx * SampleTime;
-	pgps->CorY += dy * SampleTime;
 }
 
 

@@ -304,6 +304,8 @@ void DMA1_Stream5_IRQHandler(void)
 			{
 				OverWritePosition(&selfPosition,GPS_NEO.CorX,GPS_NEO.CorY);
 				Status_UpdateStatus(&VehStt.GPS_FirstGetPosition,Check_OK);
+				GPS_NEO.Pre_CorX = GPS_NEO.CorX;
+				GPS_NEO.Pre_CorY = GPS_NEO.CorY;
 			}
 		}
 	}
@@ -616,11 +618,11 @@ void DMA2_Stream2_IRQHandler(void)
 							}
 							else
 							{
-								U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,0"));
+								U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,VPLAN,0"));
 							}
 						}
 						else
-							U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,0"));
+							U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,VPLAN,0"));
 					break;
 					
 				/*--------------- Save data in internal flash memory --------*/
