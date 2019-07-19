@@ -269,6 +269,7 @@ void	Veh_ParametersInit(Vehicle *pveh)
 	pveh->Srf05_Selected_Sensor = 1;
 	pveh->Veh_Error = Veh_NoneError;
 	pveh->Sensor_Angle = 0;
+	pveh->Controller = Stanley_Controller;
 }
 
 void	Veh_UpdateVehicleFromKey(Vehicle *pveh)
@@ -1011,7 +1012,7 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 	double dmin = 0,dx,dy,d,posX, posY;
 	int 	 index = 0;
 	double efa, goal_radius, VM1, VM2, AngleRadian;
-	float L = 0.3;
+	float L = 0.19, Lf=0, Lfc=0.1;
 	pgps->Angle = &Mag;
 	AngleRadian = pgps->Angle->Angle * (double)pi/180;
 	AngleRadian = pi/2 - AngleRadian;
@@ -1028,7 +1029,10 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 		posX = pgps->CorX + pgps->dx * pgps->Times * Timer.T;
 		posY = pgps->CorY + pgps->dy * pgps->Times * Timer.T;
 	}
-	
+	// Calculate the fron wheel position
+	posX += L * cos(AngleRadian);
+	posY += L * sin(AngleRadian);
+
 	//Searching the nearest point
 	//---------------------------
 	for(int i = 0; i < pgps->NbOfP; i++)
@@ -1050,11 +1054,17 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 			}
 		}
 	}
+	if(index > pgps->NbOfP - 1)
+		index -=1;
+	Lf = pgps->K * pgps->Robot_Velocity + Lfc;
+		while((Lf > L) && (index + 1 < pgps->NbOfP))
+	{
+		dx = posX - pgps->P_X[index];
+		dy = posY - pgps->P_Y[index];
+		L = sqrt(pow(dx,2) + pow(dy,2));
+		index++;
+	}
 	pgps->dmin = dmin;
-//	if(dmin>0.1)
-//		Ktemp = pgps->K;
-//	else
-//		Ktemp = 0.2;
 	pgps->P_Yaw_Index = index;
 	efa = - ((posX - pgps->P_X[index]) * (cos(AngleRadian + pi/2)) + (posY - pgps->P_Y[index]) * sin(AngleRadian + pi/2));
 	pgps->efa = efa;
@@ -1064,6 +1074,75 @@ void GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double 
 	pgps->Thetae = Pi_To_Pi(AngleRadian - pgps->P_Yaw[index]);
 	pgps->Thetad = -atan2(pgps->K* efa, pgps->Robot_Velocity);
 	pgps->Delta_Angle  = (pgps->Thetae + pgps->Thetad)*(double)180/pi;
+}
+
+/** @brief  : Controller using Stanley algorithm
+**  @agr    : current pose of the robot and Pathx, Pathy
+**  @retval : Steering angle
+**/
+void GPS_PursuitControl(GPS *pgps, double SampleTime, double M1Velocity, double M2Velocity)
+{                   /*   Current pose of the robot   / /  Path coordinate  / /  ThetaP  */
+	double dmin = 0,dx,dy,d,posX, posY;
+	int 	 index = 0;
+	double Lf, Alpha, goal_radius, VM1, VM2, AngleRadian;
+	float L = 0.2, Lfc = 0.6;
+	pgps->Angle = &Mag;
+	AngleRadian = pgps->Angle->Angle * (double)pi/180;
+	AngleRadian = pi/2 - AngleRadian;
+	VM1 = Wheel_Radius * 2 * pi * M1Velocity/60;	
+	VM2 = Wheel_Radius * 2 * pi * M2Velocity/60;
+	pgps->Robot_Velocity = (VM1 + VM2)/2;
+	
+	// Calculate new Pos if there is no new data from GPS
+	posX = pgps->CorX;
+	posY = pgps->CorY;
+	if(!pgps->NewDataAvailable)
+	{
+		pgps->Times++;
+		posX = pgps->CorX + pgps->dx * pgps->Times * Timer.T;
+		posY = pgps->CorY + pgps->dy * pgps->Times * Timer.T;
+	}
+	// Calculate the fron wheel position
+	posX -= L * cos(AngleRadian);
+	posY -= L * sin(AngleRadian);
+	Lf = pgps->K * pgps->Robot_Velocity + Lfc;
+	//Searching the nearest lookahead point
+	//---------------------------
+	for(int i = 0; i < pgps->NbOfP; i++)
+	{
+		dx = posX - pgps->P_X[i];
+		dy = posY - pgps->P_Y[i];
+		d  = sqrt(pow(dx,2) + pow(dy,2));
+		if(i == 0)
+		{
+			dmin 	= d;
+			index = i;
+		}
+		else
+		{
+			if(dmin > d) // d is the new value that near the point
+			{
+				dmin 	= d;  // min 
+				index = i;	// position of the minimum value
+			}
+		}
+	}
+	while((Lf > L) && (index + 1 < pgps->NbOfP))
+	{
+		dx = posX - pgps->P_X[index];
+		dy = posY - pgps->P_Y[index];
+		L = sqrt(pow(dx,2) + pow(dy,2));
+		index++;
+	}
+	if(index+1 > pgps->NbOfP)
+		index = index - 1;
+	pgps->dmin = dmin;
+	pgps->P_Yaw_Index = index;
+	goal_radius = sqrt(pow(posX - pgps->P_X[pgps->NbOfWayPoints - 1],2) + pow(posY - pgps->P_Y[pgps->NbOfWayPoints - 1],2));
+	Alpha = atan2(posY - pgps->P_Y[index], posX - pgps->P_X[index]) - AngleRadian;
+	if(goal_radius <= 1)
+		Status_UpdateStatus(&GPS_NEO.Goal_Flag,Check_OK);
+	pgps->Delta_Angle  = atan2(2*L*sin(Alpha), Lf)*180/pi;
 }
 
 /** @brief  : Header compare GPS message

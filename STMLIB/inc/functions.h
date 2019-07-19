@@ -57,6 +57,11 @@ typedef	enum{
 }Command_State;
 
 typedef enum{
+	Stanley_Controller = 1,
+	Pursuit_Controller,
+}Controller_Select;
+
+typedef enum{
 	NSave = 0,
 	PID_Parameter, 
 	GPS_Coordinates,
@@ -209,6 +214,7 @@ typedef	struct Vehicle
 	uint8_t						  Srf05_Selected_Sensor;
 	Vehicle_Error				Veh_Error;
 	double							Sensor_Angle;
+	Controller_Select 	Controller;
 }Vehicle;
 
 typedef	struct Message
@@ -306,6 +312,7 @@ Check_Status		IsDataTransferCompleted(void);
 /*--------Stanley functions and GPS --------------*/
 void						GPS_ParametersInit(GPS *pgps);
 void 						GPS_StanleyControl(GPS *pgps, double SampleTime, double M1Velocity, double M2Velocity);
+void 						GPS_PursuitControl(GPS *pgps, double SampleTime, double M1Velocity, double M2Velocity);
 double					GPS_LLToDegree(double LL);
 void 						GPS_LatLonToUTM(GPS *pgps);  // Get 2 values of lat lon and update UTM coordiante to Corx and Cory
 void	 					GPS_GetLatFromString(GPS *pgps, char *inputmessage);

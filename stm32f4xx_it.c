@@ -562,6 +562,18 @@ void DMA2_Stream2_IRQHandler(void)
 							U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,1"));
 						}
 					}
+					else if(StringHeaderCompare(&U6.Message[1][0],"SCTRL")) // $AUCON,SCTRL,STLEY/PSUIT,CC<CR><LF>
+					{
+						if(StringHeaderCompare(&U6.Message[2][0],"STLEY"))
+						{
+							Veh.Controller = Stanley_Controller;
+						}
+						else if(StringHeaderCompare(&U6.Message[2][0],"PSUIT"))
+						{
+							Veh.Controller = Pursuit_Controller;
+						}
+						U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,1"));
+					}
 					else
 						U6_SendData(FeedBack(U6_TxBuffer,"$SINFO,0"));
 					break;

@@ -367,7 +367,14 @@ void SendData_2(void)
 
 void GPS_StanleyCompute()
 {
-	GPS_StanleyControl(&GPS_NEO, Timer.T, M1.Current_Vel, M2.Current_Vel);
+	if(Veh.Controller == Stanley_Controller)
+	{
+		GPS_StanleyControl(&GPS_NEO, Timer.T, M1.Current_Vel, M2.Current_Vel);
+	}
+	else if(Veh.Controller == Pursuit_Controller)
+	{
+		GPS_PursuitControl(&GPS_NEO, Timer.T, M1.Current_Vel, M2.Current_Vel);
+	}
 	IMU_UpdateSetAngle(&Mag,GPS_NEO.Delta_Angle);
 	IMU_UpdateFuzzyInput(&Mag,&Timer.T);
 	Defuzzification_Max_Min(&Mag);
@@ -469,8 +476,8 @@ int main(void)
 						}
 						else if(Status_CheckStatus(&VehStt.GPS_FirstGetPosition) && Status_CheckStatus(&VehStt.GPS_SelfUpdatePosition_Flag))
 						{
-							SelfPositionUpdateParams(&selfPosition,M2.Current_Vel,M1.Current_Vel,Mag.Angle,Timer.T);
-							GPS_UpdateCoordinateXY(&GPS_NEO,selfPosition.x,selfPosition.y);
+							SelfPositionUpdateParams(&selfPosition, M2.Current_Vel, M1.Current_Vel, Mag.Angle, Timer.T);
+							GPS_UpdateCoordinateXY(&GPS_NEO, selfPosition.x, selfPosition.y);
 							GPS_StanleyCompute();
 						}
 						else if((GPS_NEO.GPS_Quality == RTK_Fixed) || (GPS_NEO.GPS_Quality == RTK_Float))
